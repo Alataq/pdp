@@ -17,10 +17,28 @@ go build -o "$OUTPUT_DIR/pdp" "$SRC_DIR/main.go"
 # Navigate to the cmd directory
 cd "$SRC_DIR/cmd" || exit
 
-# Build the command plugins
+# Build the command plugins dynamically
 echo "Building command plugins..."
-go build -buildmode=plugin -o "../../$OUTPUT_DIR/cmd/init.so" init.go
-go build -buildmode=plugin -o "../../$OUTPUT_DIR/cmd/help.so" help.go
+for cmd_file in *.go; do
+    # Check if there are any .go files
+    if [ ! -e "$cmd_file" ]; then
+        echo "No command files found in $SRC_DIR/cmd."
+        exit 1
+    fi
+
+    # Get the base name of the command file (without the .go extension)
+    cmd_name=$(basename "$cmd_file" .go)
+
+    # Compile the command into a shared object file
+    go build -buildmode=plugin -o "../../$OUTPUT_DIR/cmd/$cmd_name.so" "$cmd_file"
+
+    # Check if the build was successful
+    if [ $? -ne 0 ]; then
+        echo "Error compiling $cmd_name. Skipping..."
+    else
+        echo "Compiled $cmd_name successfully."
+    fi
+done
 
 # Navigate back to the root directory
 cd ../../
@@ -36,4 +54,4 @@ else
     echo "Warning: The init directory does not exist. No files copied."
 fi
 
-echo "Build completed. All output files are in the '$OUTPUT_DIR' directory."cd
+echo "Build completed. All output files are in the '$OUTPUT_DIR' directory."
